@@ -401,7 +401,8 @@ function update() {
 
   document.getElementById("sPriority").textContent = pri.label;
   document.getElementById("sTier").textContent = r.tier.name + " risk";
-  document.getElementById("sAuthority").textContent = r.tier.authority;
+  document.getElementById("sAuthority").textContent = r.tier.authority +
+    (esc.length ? " (mandatory escalation to the AI Governance Board also applies, \u00A74.4.6)" : "");
   document.getElementById("sEsc").textContent = esc.length ? esc.length + " trigger" + (esc.length>1?"s":"") + " apply — notify AI Governance Board" : "None indicated";
   const acts = document.getElementById("sActs");
   acts.innerHTML = "";
@@ -440,7 +441,7 @@ function summaryText() {
     "  Inherent risk: " + r.inherent + "   Residual risk: " + r.residual + "   Tier: " + r.tier.name,
     "",
     "APPROVAL PATHWAY (Section 3.10.1)",
-    "  Approval authority: " + r.tier.authority,
+    "  Approval authority: " + r.tier.authority + (esc.length ? " (mandatory escalation to the AI Governance Board also applies, Section 4.4.6)" : ""),
     "  Required activities: " + r.tier.acts.join("; "),
     "",
     "NEXT STEP",
