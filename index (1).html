@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Westminster AI Governance Triage Calculator</title>
+<meta name="description" content="Decision-support calculator for the Westminster AI governance intake process. Stores no data.">
+<style>
+  :root{
+    --navy:#0A2342; --navy-deep:#061729; --gold:#C9A442; --gold-soft:#F6EFDD;
+    --paper:#F5F4F1; --card:#FFFFFF; --ink:#1F2A37; --muted:#5B6470;
+    --line:#E3E1DA; --ok:#2E6E4E; --warn:#8A4B08;
+    --radius:10px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} *{transition:none!important} }
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--paper);color:var(--ink);line-height:1.55;font-size:16px}
+
+  header{background:linear-gradient(180deg,var(--navy) 0%,var(--navy-deep) 100%);color:#fff;padding:36px 20px 30px;border-bottom:4px solid var(--gold)}
+  .wrap{max-width:880px;margin:0 auto;padding:0 4px}
+  .crest{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);font-weight:bold;margin:0 0 10px}
+  header h1{margin:0 0 10px;font-size:clamp(24px,4vw,34px);line-height:1.2}
+  header p{margin:0;color:#C9D2DE;max-width:60ch;font-size:15px}
+  .nostore{display:inline-block;margin-top:14px;border:1px solid rgba(201,164,66,.55);color:var(--gold);font-size:12.5px;letter-spacing:.06em;padding:5px 12px;border-radius:999px}
+
+  main{max-width:880px;margin:0 auto;padding:26px 20px 60px}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:26px 26px 22px;margin:22px 0}
+  .eyebrow{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);font-weight:bold;margin:0 0 6px}
+  .step h2{margin:0 0 6px;color:var(--navy);font-size:21px}
+  .step > .lede{margin:0 0 18px;color:var(--muted);font-size:14.5px;max-width:68ch}
+  .ref{color:var(--muted);font-weight:normal;font-size:13px;white-space:nowrap}
+
+  /* AGPI dimensions */
+  fieldset.dim{border:0;border-top:1px solid var(--line);margin:0;padding:16px 0 14px}
+  fieldset.dim:first-of-type{border-top:0;padding-top:4px}
+  .dimhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  legend.dimname, .dimname{font-weight:bold;color:var(--navy);font-size:16px;padding:0}
+  .weight{background:var(--gold-soft);color:#7A5E17;border:1px solid #E4D3A2;font-size:12px;font-weight:bold;padding:2px 9px;border-radius:999px}
+  .q{margin:4px 0 10px;color:var(--muted);font-size:14px;max-width:70ch}
+  .scale{display:flex;gap:8px;flex-wrap:wrap}
+  .scale label{flex:1 1 120px;min-width:118px;cursor:pointer}
+  .scale input{position:absolute;opacity:0;width:1px;height:1px}
+  .scale .opt{display:block;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;text-align:center;background:#fff;transition:border-color .12s, background .12s}
+  .scale .num{display:block;font-weight:bold;color:var(--navy);font-size:15px}
+  .scale .lab{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+  .scale input:checked + .opt{background:var(--navy);border-color:var(--navy)}
+  .scale input:checked + .opt .num, .scale input:checked + .opt .lab{color:#fff}
+  .scale input:focus-visible + .opt{outline:3px solid var(--gold);outline-offset:2px}
+  .scale label:hover .opt{border-color:var(--navy)}
+
+  /* AGPI gauge */
+  .gauge{margin:22px 0 4px}
+  .gaugebar{position:relative;height:18px;border-radius:999px;overflow:hidden;border:1px solid var(--line);
+    background:linear-gradient(90deg,#DDE4EC 0 20%, #C6D2E0 20% 40%, #9FB2C8 40% 60%, #5E7899 60% 80%, var(--navy) 80% 100%)}
+  .needle{position:absolute;top:-5px;bottom:-5px;width:4px;background:var(--gold);border-radius:2px;left:0;transition:left .25s ease;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+  .bands{display:flex;font-size:11.5px;color:var(--muted);margin-top:6px}
+  .bands span{flex:1;text-align:center;border-left:1px solid var(--line)}
+  .bands span:first-child{border-left:0}
+
+  .result{border-left:5px solid var(--gold);background:var(--gold-soft);border-radius:0 8px 8px 0;padding:14px 18px;margin-top:16px}
+  .result .big{font-size:18px;font-weight:bold;color:var(--navy);margin:0 0 3px}
+  .result p{margin:0;font-size:14.5px;color:var(--ink)}
+
+  /* triggers */
+  .trigger{display:flex;gap:12px;align-items:flex-start;padding:11px 4px;border-top:1px solid var(--line)}
+  .trigger:first-of-type{border-top:0}
+  .trigger input{width:20px;height:20px;margin-top:2px;accent-color:var(--navy);flex:none}
+  .trigger input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+  .trigger label{font-size:14.5px;cursor:pointer}
+  .escalate{display:none;border-left:5px solid var(--warn);background:#FBF3E7;border-radius:0 8px 8px 0;padding:14px 18px;margin-top:16px}
+  .escalate.on{display:block}
+  .escalate .big{font-weight:bold;color:var(--warn);margin:0 0 3px;font-size:16px}
+  .escalate p{margin:0;font-size:14.5px}
+
+  /* risk step */
+  .impactgrid{display:grid;grid-template-columns:1fr;gap:10px;margin:6px 0 4px}
+  .impactrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;padding:10px 14px;background:#fff}
+  .impactrow .iname{flex:1 1 220px;font-size:14.5px}
+  .impactrow .iname b{color:var(--navy)}
+  .impactrow .iname small{display:block;color:var(--muted);font-size:12.5px}
+  select{font:inherit;font-size:14.5px;padding:7px 10px;border:1.5px solid var(--line);border-radius:7px;background:#fff;color:var(--ink)}
+  select:focus-visible{outline:3px solid var(--gold);outline-offset:1px}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+  @media (max-width:640px){.pair{grid-template-columns:1fr}}
+  .pair .cellhead{font-weight:bold;color:var(--navy);font-size:15px;margin:0 0 4px}
+  .pair .cellq{color:var(--muted);font-size:13px;margin:0 0 8px}
+  .pair select{width:100%}
+
+  .riskout{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:18px}
+  .stat{border:1px solid var(--line);border-radius:8px;padding:12px 14px;background:#fff}
+  .stat .k{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .stat .v{font-size:20px;font-weight:bold;color:var(--navy);margin-top:2px}
+  .tier-Low .v{color:var(--ok)} .tier-Critical .v{color:#8B1E1E}
+
+  /* summary */
+  .summary{background:var(--navy);color:#fff;border-radius:var(--radius);padding:28px 26px;margin:26px 0 6px}
+  .summary h2{margin:0 0 4px;font-size:21px;color:#fff}
+  .summary .eyebrow{color:var(--gold)}
+  .sumgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin:18px 0 6px}
+  .sumitem{border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:12px 14px}
+  .sumitem .k{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#AAB8C9}
+  .sumitem .v{font-weight:bold;margin-top:3px;color:var(--gold);font-size:15.5px}
+  .sumitem .v.plain{color:#fff}
+  .acts{margin:12px 0 0;padding:0 0 0 18px;font-size:14px;color:#DDE4EC}
+  .acts li{margin:4px 0}
+  .next{border-top:1px solid rgba(255,255,255,.18);margin-top:18px;padding-top:14px;font-size:14.5px;color:#DDE4EC}
+  .next b{color:#fff}
+  .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+  button{font:inherit;font-weight:bold;font-size:14.5px;padding:10px 18px;border-radius:8px;cursor:pointer;border:1.5px solid var(--gold);background:var(--gold);color:var(--navy)}
+  button.ghost{background:transparent;color:var(--gold)}
+  button:hover{filter:brightness(1.06)}
+  button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+  .copied{font-size:13px;color:var(--gold);align-self:center;min-height:1em}
+
+  footer{max-width:880px;margin:0 auto;padding:8px 20px 60px;color:var(--muted);font-size:13px}
+  footer p{max-width:75ch;margin:8px 0}
+
+  @media print{
+    header,footer .noprint,.btns,.copied{display:none}
+    body{background:#fff}
+    .step,.summary{border:1px solid #999;break-inside:avoid}
+    .summary{background:#fff;color:#000}
+    .summary h2,.sumitem .v{color:#000}
+    .sumitem{border-color:#999}
+    .acts,.next{color:#000}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="crest">Westminster City Council</p>
+    <h1>AI Governance Triage Calculator</h1>
+    <p>Answer a short set of questions about a proposed or existing AI system to see its governance priority,
+       risk classification, approval route and required assessments, as defined in the Westminster AI Governance
+       Playbook (Sections 3.8 to 3.10 and Chapter 4).</p>
+    <span class="nostore">Stores nothing. Nothing you enter leaves this page.</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- STEP 1: AGPI -->
+  <section class="step" aria-labelledby="s1h">
+    <p class="eyebrow">Step 1 of 3</p>
+    <h2 id="s1h">Governance priority <span class="ref">AGPI, Playbook §3.9.6</span></h2>
+    <p class="lede">Score each governance dimension from 1 (very low concern) to 5 (critical concern).
+       The weighted scores combine into the Westminster AI Governance Priority Index.</p>
+
+    <div id="dims"></div>
+
+    <div class="gauge" aria-hidden="true">
+      <div class="gaugebar"><div class="needle" id="needle"></div></div>
+      <div class="bands">
+        <span>P5 Observe</span><span>P4 Routine</span><span>P3 Standard</span><span>P2 High</span><span>P1 Critical</span>
+      </div>
+    </div>
+
+    <div class="result" role="status" aria-live="polite" id="agpiResult">
+      <p class="big">AGPI score: <span id="agpiScore">0</span> / 100 &nbsp;·&nbsp; <span id="agpiPriority">Priority 5 (Observe)</span></p>
+      <p id="agpiAction">Local management oversight with reassessment before operational deployment.</p>
+    </div>
+  </section>
+
+  <!-- STEP 2: escalation triggers -->
+  <section class="step" aria-labelledby="s2h">
+    <p class="eyebrow">Step 2 of 3</p>
+    <h2 id="s2h">Mandatory escalation triggers <span class="ref">Playbook §4.4.6</span></h2>
+    <p class="lede">Tick any that apply. These characteristics require escalation irrespective of the scores in this calculator.</p>
+    <div id="triggers"></div>
+    <div class="escalate" id="escBanner" role="status" aria-live="polite">
+      <p class="big">Mandatory escalation applies</p>
+      <p>One or more triggers apply, so escalation is required irrespective of the quantitative risk score.
+         At intake, the AI Governance Lead must notify the AI Governance Board immediately (Playbook §3.8, Step 2).</p>
+    </div>
+  </section>
+
+  <!-- STEP 3: risk classification -->
+  <section class="step" aria-labelledby="s3h">
+    <p class="eyebrow">Step 3 of 3</p>
+    <h2 id="s3h">Risk classification <span class="ref">Playbook §4.4 and §4.5</span></h2>
+    <p class="lede">Impact is scored across five dimensions and takes the highest, recognising that a single severe
+       impact is enough to make a system high risk (§4.4.4). Inherent risk is likelihood multiplied by impact;
+       residual risk applies the control effectiveness factor (§4.4.2 and §4.4.3).</p>
+
+    <p class="cellhead" style="color:var(--navy);font-weight:bold;margin:0 0 6px">Impact by dimension (1 Minimal to 5 Severe)</p>
+    <div class="impactgrid" id="impacts"></div>
+
+    <div class="pair">
+      <div>
+        <p class="cellhead">Likelihood</p>
+        <p class="cellq">How probable is it that the risk materialises? (§4.4.5)</p>
+        <select id="likelihood" aria-label="Likelihood score">
+          <option value="1">1 · Rare</option>
+          <option value="2">2 · Unlikely</option>
+          <option value="3" selected>3 · Possible</option>
+          <option value="4">4 · Likely</option>
+          <option value="5">5 · Almost certain</option>
+        </select>
+      </div>
+      <div>
+        <p class="cellhead">Control effectiveness</p>
+        <p class="cellq">How effectively do existing or planned controls reduce the risk? (§4.4.1)</p>
+        <select id="control" aria-label="Control effectiveness score">
+          <option value="1">1 · Very strong</option>
+          <option value="2">2 · Strong</option>
+          <option value="3" selected>3 · Moderate</option>
+          <option value="4">4 · Weak</option>
+          <option value="5">5 · Ineffective</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="riskout" role="status" aria-live="polite">
+      <div class="stat"><div class="k">Inherent risk</div><div class="v" id="inherent">9</div></div>
+      <div class="stat"><div class="k">Residual risk</div><div class="v" id="residual">5.4</div></div>
+      <div class="stat" id="tierStat"><div class="k">Risk tier</div><div class="v" id="tier">Medium</div></div>
+    </div>
+  </section>
+
+  <!-- SUMMARY -->
+  <section class="summary" aria-labelledby="sumh">
+    <p class="eyebrow">Result</p>
+    <h2 id="sumh">Governance pathway</h2>
+    <div class="sumgrid" role="status" aria-live="polite">
+      <div class="sumitem"><div class="k">Governance priority</div><div class="v" id="sPriority">Priority 5 (Observe)</div></div>
+      <div class="sumitem"><div class="k">Risk classification</div><div class="v" id="sTier">Medium risk</div></div>
+      <div class="sumitem"><div class="k">Approval authority</div><div class="v" id="sAuthority">AI Governance Working Group</div></div>
+      <div class="sumitem"><div class="k">Mandatory escalation</div><div class="v plain" id="sEsc">None indicated</div></div>
+    </div>
+    <p style="margin:14px 0 0;font-size:14px;color:#AAB8C9">Required governance activities (§3.10.1):</p>
+    <ul class="acts" id="sActs"></ul>
+    <div class="next" id="sNext">
+      <b>Next step:</b> complete the AI Intake Form and submit it to the AI Governance Lead before any procurement,
+      development or deployment begins — or, for a system already in use, for retrospective intake without delay (Playbook §3.8). Screening takes place within five working days.
+    </div>
+    <div class="btns">
+      <button type="button" id="btnCopy">Copy summary</button>
+      <button type="button" id="btnDownload" class="ghost">Download summary</button>
+      <button type="button" id="btnPrint" class="ghost">Print</button>
+      <span class="copied" id="copyNote" role="status" aria-live="polite"></span>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p><b>Decision support only.</b> The AGPI is a decision-support tool rather than a substitute for informed governance
+     judgement (Playbook §3.9.6). The AI Governance Working Group may raise the priority of any system where concerns
+     exist that scoring does not fully reflect. Where uncertainty exists over classification, the higher level of
+     scrutiny applies until a formal assessment is complete (§3.10.1).</p>
+  <p>This calculator runs entirely in your browser and stores no information. Refreshing the page clears everything.</p>
+  <p>Aligned to the Westminster AI Governance Playbook v18 · Kim Abercromby</p>
+</footer>
+
+<script>
+"use strict";
+
+/* ---- Framework data, verbatim from the Playbook ---- */
+
+const DIMENSIONS = [
+  { id:"resident",  name:"Resident Impact", weight:25,
+    q:"Could the AI influence services, decisions or outcomes affecting residents or service users?" },
+  { id:"trust",     name:"Public Trust and Reputation", weight:20,
+    q:"Could failures reduce confidence in Westminster or attract significant public scrutiny?" },
+  { id:"legal",     name:"Legal and Regulatory Exposure", weight:20,
+    q:"Does the AI engage statutory duties, regulatory requirements or legal obligations?" },
+  { id:"visibility",name:"Governance Visibility and Accountability", weight:15,
+    q:"Is ownership clear? Is the AI registered, documented and appropriately governed?" },
+  { id:"strategic", name:"Strategic Value and Organisational Dependency", weight:10,
+    q:"How important is the AI to delivering Westminster's strategic objectives and operational performance?" },
+  { id:"oversight", name:"Human Oversight and Decision Authority", weight:10,
+    q:"Does meaningful human oversight exist, and can AI-assisted decisions be reviewed or challenged?" },
+];
+
+const SCALE_LABELS = ["Very low concern","Low concern","Moderate concern","Significant concern","Critical concern"];
+
+const PRIORITIES = [
+  { min:80, label:"Priority 1 (Critical)", action:"Immediate governance review, executive oversight and comprehensive assurance before deployment." },
+  { min:60, label:"Priority 2 (High)",     action:"Enhanced governance assessment, formal risk review and AI Governance Working Group oversight." },
+  { min:40, label:"Priority 3 (Standard)", action:"Standard governance assessment and ongoing monitoring." },
+  { min:20, label:"Priority 4 (Routine)",  action:"Registration within the AI Register and periodic review." },
+  { min:0,  label:"Priority 5 (Observe)",  action:"Local management oversight with reassessment before operational deployment." },
+];
+
+const TRIGGERS = [
+  "Processing of special category personal data as defined by the UK GDPR",
+  "AI used in relation to vulnerable residents, including children, adults with care and support needs, and individuals experiencing homelessness",
+  "AI that directly influences housing allocation, social care assessments or homelessness prevention decisions",
+  "Novel or first-of-type AI deployment for which Westminster has no prior operational experience",
+  "AI that produces or directly informs statutory decisions",
+  "Significant AI supplier or model change that materially alters the risk profile of an existing deployment",
+];
+
+const IMPACT_DIMS = [
+  { name:"Resident impact",           hint:"Physical, psychological, financial or social harm to individuals or communities" },
+  { name:"Legal and regulatory impact", hint:"Regulatory sanctions, enforcement action, legal proceedings or breach of statutory obligations" },
+  { name:"Reputational impact",       hint:"Damage to public trust, media coverage or political scrutiny" },
+  { name:"Operational impact",        hint:"Disruption to service delivery, operational failures or remediation costs" },
+  { name:"Financial impact",          hint:"Direct financial costs including compensation, fines and lost efficiency" },
+];
+
+const TIERS = [
+  { max:5,  name:"Low",      authority:"Service Owner and Relevant Service Manager",
+    acts:["AI Register entry","Basic assessment","Policy compliance review"] },
+  { max:10, name:"Medium",   authority:"AI Governance Working Group",
+    acts:["Structured risk assessment","Governance review","Monitoring requirements"] },
+  { max:15, name:"High",     authority:"AI Governance Board",
+    acts:["Enhanced assessment","DPIA where applicable","Equality Impact Assessment","Legal review","Security review","Responsible AI assessment"] },
+  { max:25, name:"Critical", authority:"AI Governance Board, Executive Sponsor and Relevant Executive Leadership",
+    acts:["Executive oversight","Enhanced assurance","Independent challenge","Formal governance reporting"] },
+];
+
+/* ---- Build the form ---- */
+
+const dimsHost = document.getElementById("dims");
+DIMENSIONS.forEach(d => {
+  const fs = document.createElement("fieldset");
+  fs.className = "dim";
+  let opts = "";
+  for (let v = 1; v <= 5; v++) {
+    opts += `<label><input type="radio" name="${d.id}" value="${v}" ${v===1?"checked":""}>` +
+            `<span class="opt"><span class="num">${v}</span><span class="lab">${SCALE_LABELS[v-1]}</span></span></label>`;
+  }
+  fs.innerHTML =
+    `<legend class="dimname">${d.name} <span class="weight">${d.weight}%</span></legend>` +
+    `<p class="q">${d.q}</p><div class="scale">${opts}</div>`;
+  dimsHost.appendChild(fs);
+});
+
+const trigHost = document.getElementById("triggers");
+TRIGGERS.forEach((t, i) => {
+  const row = document.createElement("div");
+  row.className = "trigger";
+  row.innerHTML = `<input type="checkbox" id="trig${i}"><label for="trig${i}">${t}</label>`;
+  trigHost.appendChild(row);
+});
+
+const impHost = document.getElementById("impacts");
+IMPACT_DIMS.forEach((d, i) => {
+  const row = document.createElement("div");
+  row.className = "impactrow";
+  let opts = "";
+  const labels = ["1 · Minimal","2 · Minor","3 · Moderate","4 · Major","5 · Severe"];
+  for (let v = 1; v <= 5; v++) opts += `<option value="${v}" ${v===2?"selected":""}>${labels[v-1]}</option>`;
+  row.innerHTML = `<span class="iname"><b>${d.name}</b><small>${d.hint}</small></span>` +
+                  `<select id="imp${i}" aria-label="${d.name} score">${opts}</select>`;
+  impHost.appendChild(row);
+});
+
+/* ---- Calculation, exactly per the Playbook ---- */
+
+function agpi() {
+  // Each dimension: (score - 1) / 4 x weight, summed (Section 3.9.6)
+  let total = 0;
+  DIMENSIONS.forEach(d => {
+    const v = Number(document.querySelector(`input[name="${d.id}"]:checked`).value);
+    total += ((v - 1) / 4) * d.weight;
+  });
+  return Math.round(total * 100) / 100;
+}
+function priorityFor(score) { return PRIORITIES.find(p => score >= p.min); }
+
+function risk() {
+  let impact = 1;
+  for (let i = 0; i < IMPACT_DIMS.length; i++) {
+    impact = Math.max(impact, Number(document.getElementById("imp" + i).value));  // highest dimension (4.4.4)
+  }
+  const L = Number(document.getElementById("likelihood").value);
+  const C = Number(document.getElementById("control").value);
+  const inherent = L * impact;                       // 4.4.2
+  const residual = Math.round(inherent * (C / 5) * 10) / 10;   // 4.4.3
+  const tier = TIERS.find(t => residual <= t.max) || TIERS[TIERS.length - 1];
+  return { impact, L, C, inherent, residual, tier };
+}
+
+function escalation() {
+  return TRIGGERS.map((t, i) => document.getElementById("trig" + i).checked ? t : null).filter(Boolean);
+}
+
+/* ---- Render ---- */
+
+function update() {
+  const score = agpi();
+  const pri = priorityFor(score);
+  document.getElementById("agpiScore").textContent = score;
+  document.getElementById("agpiPriority").textContent = pri.label;
+  document.getElementById("agpiAction").textContent = pri.action;
+  document.getElementById("needle").style.left = "calc(" + Math.min(score, 100) + "% - 2px)";
+
+  const esc = escalation();
+  document.getElementById("escBanner").classList.toggle("on", esc.length > 0);
+
+  const r = risk();
+  document.getElementById("inherent").textContent = r.inherent;
+  document.getElementById("residual").textContent = r.residual;
+  document.getElementById("tier").textContent = r.tier.name;
+  document.getElementById("tierStat").className = "stat tier-" + r.tier.name;
+
+  document.getElementById("sPriority").textContent = pri.label;
+  document.getElementById("sTier").textContent = r.tier.name + " risk";
+  document.getElementById("sAuthority").textContent = r.tier.authority +
+    (esc.length ? " (mandatory escalation to the AI Governance Board also applies, \u00A74.4.6)" : "");
+  document.getElementById("sEsc").textContent = esc.length ? esc.length + " trigger" + (esc.length>1?"s":"") + " apply — notify AI Governance Board" : "None indicated";
+  const acts = document.getElementById("sActs");
+  acts.innerHTML = "";
+  r.tier.acts.forEach(a => { const li = document.createElement("li"); li.textContent = a; acts.appendChild(li); });
+}
+
+document.addEventListener("input", update);
+update();
+
+/* ---- Summary export ---- */
+
+function summaryText() {
+  const score = agpi(), pri = priorityFor(score), r = risk(), esc = escalation();
+  const d = new Date().toLocaleDateString("en-GB", { day:"numeric", month:"long", year:"numeric" });
+  const dimLines = DIMENSIONS.map(dm => {
+    const v = document.querySelector(`input[name="${dm.id}"]:checked`).value;
+    return `  ${dm.name} (${dm.weight}%): ${v}/5`;
+  }).join("\n");
+  const escLines = esc.length ? esc.map(t => "  - " + t).join("\n") : "  None indicated";
+  return [
+    "WESTMINSTER AI GOVERNANCE TRIAGE SUMMARY",
+    "Generated " + d + " · Decision support only · Aligned to Playbook v18",
+    "",
+    "AGPI GOVERNANCE PRIORITY (Section 3.9.6)",
+    dimLines,
+    "  AGPI score: " + score + "/100",
+    "  Priority: " + pri.label,
+    "  Required action: " + pri.action,
+    "",
+    "MANDATORY ESCALATION TRIGGERS (Section 4.4.6)",
+    escLines,
+    esc.length ? "  Action: AI Governance Lead to notify the AI Governance Board immediately (Section 3.8)" : "",
+    "",
+    "RISK CLASSIFICATION (Sections 4.4 and 4.5)",
+    "  Highest impact: " + r.impact + "/5   Likelihood: " + r.L + "/5   Control effectiveness: " + r.C + "/5",
+    "  Inherent risk: " + r.inherent + "   Residual risk: " + r.residual + "   Tier: " + r.tier.name,
+    "",
+    "APPROVAL PATHWAY (Section 3.10.1)",
+    "  Approval authority: " + r.tier.authority + (esc.length ? " (mandatory escalation to the AI Governance Board also applies, Section 4.4.6)" : ""),
+    "  Required activities: " + r.tier.acts.join("; "),
+    "",
+    "NEXT STEP",
+    "  Complete the AI Intake Form and submit it to the AI Governance Lead before any",
+    "  procurement, development or deployment begins — or, for a system already in",
+    "  use, for retrospective intake without delay (Section 3.8).",
+    "",
+    "Professional judgement prevails over numerical scores (Section 3.9.6).",
+    "This summary was generated locally; the calculator stores no data.",
+  ].filter(l => l !== "").join("\n");
+}
+
+document.getElementById("btnCopy").addEventListener("click", async () => {
+  const note = document.getElementById("copyNote");
+  try {
+    await navigator.clipboard.writeText(summaryText());
+    note.textContent = "Copied";
+  } catch (e) {
+    note.textContent = "Copy failed — use Download instead";
+  }
+  setTimeout(() => { note.textContent = ""; }, 2500);
+});
+
+document.getElementById("btnDownload").addEventListener("click", () => {
+  const blob = new Blob([summaryText()], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "AI-governance-triage-summary.txt";
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(a.href);
+});
+
+document.getElementById("btnPrint").addEventListener("click", () => window.print());
+</script>
+</body>
+</html>
